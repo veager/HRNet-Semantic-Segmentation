@@ -59,11 +59,19 @@ class Cityscapes(BaseDataset):
                               25: 12, 26: 13, 27: 14, 28: 15, 
                               29: ignore_label, 30: ignore_label, 
                               31: 16, 32: 17, 33: 18}
-        self.class_weights = torch.FloatTensor([0.8373, 0.918, 0.866, 1.0345, 
-                                        1.0166, 0.9969, 0.9754, 1.0489,
-                                        0.8786, 1.0023, 0.9539, 0.9843, 
-                                        1.1116, 0.9037, 1.0865, 1.0955, 
-                                        1.0865, 1.1529, 1.0507]).cuda()
+
+        if torch.cuda.is_available():
+            self.class_weights = torch.FloatTensor([0.8373, 0.918, 0.866, 1.0345,
+                                            1.0166, 0.9969, 0.9754, 1.0489,
+                                            0.8786, 1.0023, 0.9539, 0.9843,
+                                            1.1116, 0.9037, 1.0865, 1.0955,
+                                            1.0865, 1.1529, 1.0507]).cuda()
+        else:
+            self.class_weights = torch.FloatTensor([0.8373, 0.918, 0.866, 1.0345,
+                                            1.0166, 0.9969, 0.9754, 1.0489,
+                                            0.8786, 1.0023, 0.9539, 0.9843,
+                                            1.1116, 0.9037, 1.0865, 1.0955,
+                                            1.0865, 1.1529, 1.0507])
     
     def read_files(self):
         files = []
@@ -127,10 +135,17 @@ class Cityscapes(BaseDataset):
         batch, _, ori_height, ori_width = image.size()
         assert batch == 1, "only supporting batchsize 1."
         image = image.numpy()[0].transpose((1,2,0)).copy()
-        stride_h = np.int(self.crop_size[0] * 1.0)
-        stride_w = np.int(self.crop_size[1] * 1.0)
-        final_pred = torch.zeros([1, self.num_classes,
-                                    ori_height,ori_width]).cuda()
+        stride_h = int(self.crop_size[0] * 1.0)
+        stride_w = int(self.crop_size[1] * 1.0)
+
+        # add cpu compatible
+        if torch.cuda.is_available():
+            final_pred = torch.zeros([1, self.num_classes,
+                                        ori_height,ori_width]).cuda()
+        else:
+            final_pred = torch.zeros([1, self.num_classes,
+                                        ori_height,ori_width]).cpu()
+
         for scale in scales:
             new_img = self.multi_scale_aug(image=image,
                                            rand_scale=scale,
@@ -145,13 +160,20 @@ class Cityscapes(BaseDataset):
                 preds = preds[:, :, 0:height, 0:width]
             else:
                 new_h, new_w = new_img.shape[:-1]
-                rows = np.int(np.ceil(1.0 * (new_h - 
-                                self.crop_size[0]) / stride_h)) + 1
-                cols = np.int(np.ceil(1.0 * (new_w - 
-                                self.crop_size[1]) / stride_w)) + 1
-                preds = torch.zeros([1, self.num_classes,
-                                           new_h,new_w]).cuda()
-                count = torch.zeros([1,1, new_h, new_w]).cuda()
+                rows = int(np.ceil(1.0 * (new_h -
+                            self.crop_size[0]) / stride_h)) + 1
+                cols = int(np.ceil(1.0 * (new_w -
+                            self.crop_size[1]) / stride_w)) + 1
+
+                # add cpu compatible
+                if torch.cuda.is_available():
+                    preds = torch.zeros([1, self.num_classes,
+                                               new_h,new_w]).cuda()
+                    count = torch.zeros([1,1, new_h, new_w]).cuda()
+                else:
+                    preds = torch.zeros([1, self.num_classes,
+                                         new_h,new_w]).cpu()
+                    count = torch.zeros([1,1, new_h, new_w]).cpu()
 
                 for r in range(rows):
                     for c in range(cols):

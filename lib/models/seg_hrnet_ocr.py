@@ -468,7 +468,7 @@ class HighResolutionNet(nn.Module):
         self.stage4, pre_stage_channels = self._make_stage(
             self.stage4_cfg, num_channels, multi_scale_output=True)
 
-        last_inp_channels = np.int(np.sum(pre_stage_channels))
+        last_inp_channels = int(np.sum(pre_stage_channels))
         ocr_mid_channels = config.MODEL.OCR.MID_CHANNELS
         ocr_key_channels = config.MODEL.OCR.KEY_CHANNELS
 

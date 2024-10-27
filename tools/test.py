@@ -62,7 +62,8 @@ def main():
     cudnn.enabled = config.CUDNN.ENABLED
 
     # build model
-    if torch.__version__.startswith('1'):
+    # add torch 2.0 compatible
+    if torch.__version__.startswith('1') or torch.__version__.startswith('2'):
         module = eval('models.'+config.MODEL.NAME)
         module.BatchNorm2d_class = module.BatchNorm2d = torch.nn.BatchNorm2d
     model = eval('models.'+config.MODEL.NAME +
@@ -71,15 +72,25 @@ def main():
     dump_input = torch.rand(
         (1, 3, config.TRAIN.IMAGE_SIZE[1], config.TRAIN.IMAGE_SIZE[0])
     )
-    logger.info(get_model_summary(model.cuda(), dump_input.cuda()))
+
+    # cpu compatible
+    if torch.cuda.is_available():
+        logger.info(get_model_summary(model.cuda(), dump_input.cuda()))
+    else:
+        logger.info(get_model_summary(model.cpu(), dump_input.cpu()))
 
     if config.TEST.MODEL_FILE:
         model_state_file = config.TEST.MODEL_FILE
     else:
         model_state_file = os.path.join(final_output_dir, 'final_state.pth')        
     logger.info('=> loading model from {}'.format(model_state_file))
-        
-    pretrained_dict = torch.load(model_state_file)
+
+    # cpu compatible
+    if torch.cuda.is_available():
+        pretrained_dict = torch.load(model_state_file)
+    else:
+        pretrained_dict = torch.load(model_state_file, map_location=torch.device('cpu'))
+
     if 'state_dict' in pretrained_dict:
         pretrained_dict = pretrained_dict['state_dict']
     model_dict = model.state_dict()
@@ -91,8 +102,12 @@ def main():
     model_dict.update(pretrained_dict)
     model.load_state_dict(model_dict)
 
-    gpus = list(config.GPUS)
-    model = nn.DataParallel(model, device_ids=gpus).cuda()
+    # cpu compatible
+    if torch.cuda.is_available():
+        gpus = list(config.GPUS)
+        model = nn.DataParallel(model, device_ids=gpus).cuda()
+    else:
+        pass
 
     # prepare data
     test_size = (config.TEST.IMAGE_SIZE[1], config.TEST.IMAGE_SIZE[0])
@@ -135,7 +150,7 @@ def main():
              sv_dir=final_output_dir)
 
     end = timeit.default_timer()
-    logger.info('Mins: %d' % np.int((end-start)/60))
+    logger.info('Mins: %d' % int((end-start)/60))
     logger.info('Done')
 
 

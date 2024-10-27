@@ -79,14 +79,14 @@ class BaseDataset(data.Dataset):
 
     def multi_scale_aug(self, image, label=None,
                         rand_scale=1, rand_crop=True):
-        long_size = np.int(self.base_size * rand_scale + 0.5)
+        long_size = int(self.base_size * rand_scale + 0.5)
         h, w = image.shape[:2]
         if h > w:
             new_h = long_size
-            new_w = np.int(w * long_size / h + 0.5)
+            new_w = int(w * long_size / h + 0.5)
         else:
             new_w = long_size
-            new_h = np.int(h * long_size / w + 0.5)
+            new_h = int(h * long_size / w + 0.5)
 
         image = cv2.resize(image, (new_w, new_h),
                            interpolation=cv2.INTER_LINEAR)
@@ -105,10 +105,10 @@ class BaseDataset(data.Dataset):
         h, w = image.shape[:2]
         if h < w:
             new_h = short_length
-            new_w = np.int(w * short_length / h + 0.5)
+            new_w = int(w * short_length / h + 0.5)
         else:
             new_w = short_length
-            new_h = np.int(h * short_length / w + 0.5)        
+            new_h = int(h * short_length / w + 0.5)
         image = cv2.resize(image, (new_w, new_h),
                            interpolation=cv2.INTER_LINEAR)
         pad_w, pad_h = 0, 0
@@ -212,8 +212,15 @@ class BaseDataset(data.Dataset):
             )
 
             flip_pred = flip_output.cpu().numpy().copy()
-            flip_pred = torch.from_numpy(
-                flip_pred[:, :, :, ::-1].copy()).cuda()
+
+            # add cpu compatible
+            if torch.cuda.is_available():
+                flip_pred = torch.from_numpy(
+                    flip_pred[:, :, :, ::-1].copy()).cuda()
+            else:
+                flip_pred = torch.from_numpy(
+                    flip_pred[:, :, :, ::-1].copy()).cpu()
+
             pred += flip_pred
             pred = pred * 0.5
         return pred.exp()
@@ -222,10 +229,17 @@ class BaseDataset(data.Dataset):
         batch, _, ori_height, ori_width = image.size()
         assert batch == 1, "only supporting batchsize 1."
         image = image.numpy()[0].transpose((1, 2, 0)).copy()
-        stride_h = np.int(self.crop_size[0] * 2.0 / 3.0)
-        stride_w = np.int(self.crop_size[1] * 2.0 / 3.0)
-        final_pred = torch.zeros([1, self.num_classes,
-                                  ori_height, ori_width]).cuda()
+        stride_h = int(self.crop_size[0] * 2.0 / 3.0)
+        stride_w = int(self.crop_size[1] * 2.0 / 3.0)
+
+        # add cpu compatible
+        if torch.cuda.is_available():
+            final_pred = torch.zeros([1, self.num_classes,
+                                      ori_height, ori_width]).cuda()
+        else:
+            final_pred = torch.zeros([1, self.num_classes,
+                                      ori_height, ori_width]).cpu()
+
         padvalue = -1.0 * np.array(self.mean) / np.array(self.std)
         for scale in scales:
             new_img = self.multi_scale_aug(image=image,
@@ -246,13 +260,20 @@ class BaseDataset(data.Dataset):
                     new_img = self.pad_image(new_img, height, width,
                                              self.crop_size, padvalue)
                 new_h, new_w = new_img.shape[:-1]
-                rows = np.int(np.ceil(1.0 * (new_h -
-                                             self.crop_size[0]) / stride_h)) + 1
-                cols = np.int(np.ceil(1.0 * (new_w -
-                                             self.crop_size[1]) / stride_w)) + 1
-                preds = torch.zeros([1, self.num_classes,
-                                     new_h, new_w]).cuda()
-                count = torch.zeros([1, 1, new_h, new_w]).cuda()
+                rows = int(np.ceil(1.0 * (new_h -
+                                        self.crop_size[0]) / stride_h)) + 1
+                cols = int(np.ceil(1.0 * (new_w -
+                                        self.crop_size[1]) / stride_w)) + 1
+
+                # add cpu compatible
+                if torch.cuda.is_available():
+                    preds = torch.zeros([1, self.num_classes,
+                                         new_h, new_w]).cuda()
+                    count = torch.zeros([1, 1, new_h, new_w]).cuda()
+                else:
+                    preds = torch.zeros([1, self.num_classes,
+                                         new_h, new_w]).cpu()
+                    count = torch.zeros([1, 1, new_h, new_w]).cpu()
 
                 for r in range(rows):
                     for c in range(cols):
