@@ -33,7 +33,10 @@ Required pretrained model:
     - configured by argument `TEST.MODEL_FILE` in `config` file
 
 
-## 2.1 Output categorise
+## 2.1 Training categorise
+
+
+The following selective categories ("trainId") are used to training the HRNet-OCR model. Whereas, the output is restored to the original id ("id")
 
 | trainId      | id                                                                | name            |
 | ------------ |-------------------------------------------------------------------| --------------- |
@@ -57,3 +60,24 @@ Required pretrained model:
 | 16           | 31                                                                | 'train'         |
 | 17           | 32                                                                | 'motorcycle'    |
 | 18           | 33                                                                | 'bicycle'       |
+
+
+## 2.2 CMD Example
+
+```shell
+activate py311ml
+
+cd "HRNet-Semantic-Segmentation"
+
+python tools/test.py --cfg "__experiments/pretrained_model/seg_hrnet_ocr_w48_trainval_512x1024_sgd_lr1e-2_wd5e-4_bs_12_epoch484.yaml" ^
+    "MODEL.PRETRAINED"  "__experiments/pretrained_model/hrnetv2_w48_imagenet_pretrained.pth" ^
+    "TEST.MODEL_FILE"   "__experiments/pretrained_model/hrnet_ocr_cs_trainval_8227_torch11.pth" ^
+    "OUTPUT_DIR"        "__experiments/exp_nyc/output/" ^
+    "LOG_DIR"           "__experiments/exp_nyc/log/" ^
+    "DATASET.ROOT"      "__experiments/exp_nyc/image/" ^
+    "DATASET.TEST_SET"  "data_test.lst" ^
+    "TEST.BASE_SIZE"    "640" ^
+    "TEST.SCALE_LIST"   "0.5,1.0,1.5" ^
+    "TEST.IMAGE_SIZE"   "640,640" ^
+    "CUDNN.ENABLED"     "False"
+```
