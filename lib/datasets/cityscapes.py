@@ -216,13 +216,69 @@ class Cityscapes(BaseDataset):
                 lab >>= 3
         return palette
 
+    # add a function mapping the label to the color aligning with Cityscapes
+    def convert_label_to_color(self, arr_2d):
+
+        color_dict = {
+            0:  (  0,   0,   0),
+            1:  (  0,   0,   0),
+            2:  (  0,   0,   0),
+            3:  (  0,   0,   0),
+            4:  (  0,   0,   0),
+            5:  (111,  74,   0),
+            6:  ( 81,   0,  81),
+            7:  (128,  64, 128),
+            8:  (244,  35, 232),
+            9:  (250, 170, 160),
+            10: (230, 150, 140),
+            11: ( 70,  70,  70),
+            12: (102, 102, 156),
+            13: (190, 153, 153),
+            14: (180, 165, 180),
+            15: (150, 100, 100),
+            16: (150, 120, 90),
+            17: (153, 153, 153),
+            18: (153, 153, 153),
+            19: (250, 170,  30),
+            20: (220, 220,   0),
+            21: (107, 142,  35),
+            22: (152, 251, 152),
+            23: (70,  130, 180),
+            24: (220,  20,  60),
+            25: (255,   0,   0),
+            26: (  0,   0, 142),
+            27: (  0,   0,  70),
+            28: (  0,  60, 100),
+            29: (  0,   0,  90),
+            30: (  0,   0, 110),
+            31: (  0,  80, 100),
+            32: (  0,   0, 230),
+            33: (119,  11,  32),
+            -1: (  0,   0, 142)
+        }
+
+        unique_ids = np.unique(arr_2d)
+
+        # Map each unique ID to its color using the dictionary
+        color_map = {id_: color_dict[id_] for id_ in unique_ids}
+
+        # Use np.vectorize to create a 3D RGB array from the 2D array of IDs
+        color_array = np.vectorize(color_map.get, otypes=[np.uint8, np.uint8, np.uint8])
+
+        # Stack the resulting 3 separate RGB channels to get the final 3D array
+        arr_3d = np.stack(color_array(arr_2d), axis=-1)
+
+        return arr_3d
+
     def save_pred(self, preds, sv_path, name):
         palette = self.get_palette(256)
         preds = np.asarray(np.argmax(preds.cpu(), axis=1), dtype=np.uint8)
         for i in range(preds.shape[0]):
             pred = self.convert_label(preds[i], inverse=True)
             save_img = Image.fromarray(pred)
-            save_img.putpalette(palette)
+            # save_img.putpalette(palette)
+            # save_img = Image.fromarray(self.convert_label_to_color(pred))
+
             save_img.save(os.path.join(sv_path, name[i]+'.png'))
 
         

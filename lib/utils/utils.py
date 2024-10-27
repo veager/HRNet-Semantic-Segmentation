@@ -81,14 +81,16 @@ def create_logger(cfg, cfg_name, phase='train'):
     model = cfg.MODEL.NAME
     cfg_name = os.path.basename(cfg_name).split('.')[0]
 
-    final_output_dir = root_output_dir / dataset / cfg_name
+    final_output_dir = root_output_dir / dataset
 
     print('=> creating {}'.format(final_output_dir))
     final_output_dir.mkdir(parents=True, exist_ok=True)
 
-    time_str = time.strftime('%Y-%m-%d-%H-%M')
-    log_file = '{}_{}_{}.log'.format(cfg_name, time_str, phase)
+    time_str = time.strftime('%Y-%m-%d')
+    # log_file = '{}_{}_{}.log'.format(cfg_name, time_str, phase)
+    log_file = '{}_{}.log'.format(time_str, phase)
     final_log_file = final_output_dir / log_file
+
     head = '%(asctime)-15s %(message)s'
     logging.basicConfig(filename=str(final_log_file),
                         format=head)
@@ -97,8 +99,7 @@ def create_logger(cfg, cfg_name, phase='train'):
     console = logging.StreamHandler()
     logging.getLogger('').addHandler(console)
 
-    tensorboard_log_dir = Path(cfg.LOG_DIR) / dataset / model / \
-            (cfg_name + '_' + time_str)
+    tensorboard_log_dir = Path(cfg.LOG_DIR) / dataset / time_str
     print('=> creating {}'.format(tensorboard_log_dir))
     tensorboard_log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -111,7 +112,7 @@ def get_confusion_matrix(label, pred, size, num_class, ignore=-1):
     output = pred.cpu().numpy().transpose(0, 2, 3, 1)
     seg_pred = np.asarray(np.argmax(output, axis=3), dtype=np.uint8)
     seg_gt = np.asarray(
-    label.cpu().numpy()[:, :size[-2], :size[-1]], dtype=np.int)
+        label.cpu().numpy()[:, :size[-2], :size[-1]], dtype=int)
 
     ignore_index = seg_gt != ignore
     seg_gt = seg_gt[ignore_index]
